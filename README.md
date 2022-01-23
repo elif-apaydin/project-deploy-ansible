@@ -7,20 +7,20 @@ This Playbook proceeds tasks which are needed to be done before containerized se
 ### Parts of this repository ###
 
 * [Backend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/ansible-backend-playbook.yaml)
-* [Frontend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main//ansible-stage-frontend-playbook.yaml)
+* [Frontend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/ansible-frontend-playbook.yaml)
 * [Inventory](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/hosts)
 * [Pipeline](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/bitbucket-pipelines.yml)
 * [Template Nginx.conf](https://github.com/elif-apaydin/bf-project-deploy-ansible/tree/main/nginx)
 
 ### How does it work? ###
 
-1. [Backend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/ansible-stage-backend-playbook.yaml) consists of two main parts: Stg Ops Part is responsible for performing tasks on Stage Server, whereas Mysql Ops Part is responsible for database related tasks.
+1. [Backend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/ansible-backend-playbook.yaml) consists of two main parts: Stg Ops Part is responsible for performing tasks on Stage Server, whereas Mysql Ops Part is responsible for database related tasks.
 
 * Stg Ops: As we comment out in the code stg ops performs the following tasks on the Stage Server: Adding App User, File Management related tasks in user's home path, Public Key Operation, Adding Nginx Conf File for app, Storing mysql credentials.
 
 * Mysql Ops: This part is running on the localhost. It is responsible for Creating a database for APP , Assigning the pass generated in pipeline step to the user and Granting necessary roles on the user.
 
-2. [Frontend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/ansible-stage-frontend-playbook.yaml) consists of one main part: Stg Ops Part is responsible for performing tasks on Stage Server.
+2. [Frontend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/ansible-frontend-playbook.yaml) consists of one main part: Stg Ops Part is responsible for performing tasks on Stage Server.
 
 * Stg Ops: As we comment out in the code stg ops performs the following tasks on the Stage Server: Adding App User, File Management related tasks in user's home path, Public Key Operation, Adding Nginx Conf File for app.
 

@@ -10,7 +10,7 @@ This Playbook proceeds tasks which are needed to be done before containerized se
 * [Frontend Playbook](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main//ansible-stage-frontend-playbook.yaml)
 * [Inventory](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/hosts)
 * [Pipeline](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/bitbucket-pipelines.yml)
-* [Template Nginx.conf](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/src/nginx/)
+* [Template Nginx.conf](https://github.com/elif-apaydin/bf-project-deploy-ansible/tree/main/nginx)
 
 ### How does it work? ###
 
@@ -30,7 +30,7 @@ This Playbook proceeds tasks which are needed to be done before containerized se
 4. In [Pipeline](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/bitbucket-pipelines.yml) we use custom mode to trigger pipelines whenever we need it; especially when a new service has been emerged. Caching part enables us to fasten the installation of dependencies. Using script part we can run the Playbook.
 
 
-5. [Template Nginx.conf](https://github.com/elif-apaydin/bf-project-deploy-ansible/blob/main/nginx.conf) consists of the nginx templates used by backend/frontend services; we manipulate content of it with playbook.
+5. [Template Nginx.conf](https://github.com/elif-apaydin/bf-project-deploy-ansible/tree/main/nginx) consists of the nginx templates used by backend/frontend services; we manipulate content of it with playbook.
 
 ### Variables ###
 

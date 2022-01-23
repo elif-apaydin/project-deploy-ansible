@@ -1,0 +1,150 @@
+---
+# THIS PLAYBOOK WAS WRITTEN TO HELP CONTINUOUS DEPLOYMENT PROCESS OF DEVOPS SERVICES' TO STAGE ENVIRONMENT
+# Can be run with the following command:
+# ansible-playbook ansible-playbook.yaml --extra-vars "user=APP_NAME port=PORT_NUMBER"
+
+# 'Stg Ops' consists of the tasks to run on Stage Server
+- name: Stg Ops
+  hosts: stage
+  remote_user: ec2-user
+  become: yes
+
+  tasks:
+    # 1st Step: We add the user with the same name as the service.
+    - name: Add User "{{ user }}"
+      ansible.builtin.user:
+        name: "{{ user }}"
+    # 2nd Step: We grant necessary permissions to user's home path
+    - name: Grant Permission
+      file:
+        path: "/home/{{ user }}/"
+        mode: '0750'
+    # 3rd Step: We add 'src' file under the user's home path
+    - name: Add File 'src'
+      file:
+        path: "/home/{{ user }}/src"
+        mode: '0777'
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        state: directory
+    # 4th Step: We add '.ssh' file under the user's home path
+    - name: Add Directory '.ssh'
+      file:
+        path: "/home/{{ user }}/.ssh"
+        mode: '0700'
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        state: directory
+    # 5th Step: We copy public_key under user's .ssh/ path
+    - name: Copy Public_key To Users' Home Path
+      copy:
+        src: ~/.ssh/id_rsa.pub
+        dest: "/home/{{ user }}/.ssh/"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0600'
+    # 6th Step: We add a comment line to authorized_keys file
+    - name: Add Comment Line to File Authorized_keys
+      ansible.builtin.lineinfile:
+        path: /home/{{ user }}/.ssh/authorized_keys
+        line: '# {{ user  }}--->'
+        create: yes
+        state: present
+    # 7th Step: We add public_key to authorized_keys
+    - name: Add Public_key To Authorized Keys
+      shell: cat /home/{{ user }}/.ssh/id_rsa.pub >> /home/{{ user }}/.ssh/authorized_keys
+    # 8th Step: We change ownership of the authorized_key file from root to user
+    - name: Change Ownership of the File 'authorized_keys'
+      file:
+        path: "/home/{{ user }}/.ssh/authorized_keys"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0600"
+    # 9th Step: We copy nginx.conf template file to under conf.d with the following name
+    - name: Copy Nginx Conf
+      copy:
+        src: "nginx/nginx-backend.conf"
+        dest: "/etc/nginx/conf.d/{{ user }}.conf"
+        mode: '0644'
+    # 10.th Step: We edit nginx.conf template with the given parameter APP_NAME
+    #- name: Edit Nginx File
+    #  shell: sed -i 's/APP/{{ user }}/g' /etc/nginx/conf.d/{{ user }}.conf && sed -i 's/PORT/{{ port }}/g' /etc/nginx/conf.d/{{ user }}.conf
+    - name: Edit Nginx File 1.st
+      replace: 
+        path: "/etc/nginx/conf.d/{{ user }}.conf"
+        regexp: 'APP'
+        replace: '{{ user }}'
+        backup: no
+    - name: Edit Nginx File 2.nd
+      replace:
+        path: "/etc/nginx/conf.d/{{ user }}.conf"
+        regexp: 'PORT'
+        replace: '{{ port }}'
+        backup: no
+    # 11.th Step: We reload Nginx
+    - name: Reload Nginx
+      shell: systemctl reload nginx
+      become: yes
+    # 12.th Step: We take a backup of sudoers file
+    - name: Take a backup of 'sudoers' File
+      copy:
+        src: /etc/sudoers
+        remote_src: true
+        dest: /tmp/sudoers-backup
+    # 13.th Step: We edit Sudoers for app user
+    - name: Edit File 'sudoers'
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        line: '{{ user }} ALL=(root) NOPASSWD: /usr/local/bin/docker-compose --project-directory /home/{{ user }}/src -p {{ user }} *'
+        create: yes
+    # 14.th Step: We edit '.bashrc' file of app user
+    - name: Edit File '.bashrc'
+      ansible.builtin.lineinfile:
+        path: "/home/{{ user }}/.bashrc"
+        line: 'alias docker-compose="sudo /usr/local/bin/docker-compose --project-directory /home/$(whoami)/src -p $(whoami) --compatibility"'
+        create: yes
+    # 15.th Step: We keep mysql user credentials info
+    - name: Save DB Pass Info
+      ansible.builtin.lineinfile:
+        path: "/tmp/mysql-info"
+        line: 'USER: {{ user }}  &&  PASS: {{ user_pass }} '
+        create: yes
+    # 16.th Step: We edit /etc/group file
+    - name: Organizing /etc/group file
+      shell: now=$(date '+%Y%m%d') && cp /etc/group /tmp/group-backup-$now && group_id=$(grep -i {{ user }} /etc/passwd | awk 'BEGIN{FS=":"} {print $3}') && echo "{{ user }}:x:$group_id:nginx" >> /etc/group
+
+# 'Mysql Ops' consists of the tasks to run on localhost
+- name: Mysql Ops
+  hosts: localhost
+  connection: local 
+  become: yes
+  tasks:
+    - name: Execute Queries
+      # TO USE 'community.mysql.mysql_query' module there are some dependencies has to be satisfied:
+      # https://docs.ansible.com/ansible/latest/collections/community/mysql/mysql_query_module.html#requirements
+      community.mysql.mysql_query:
+        login_host: "{{ mysql_host }}"
+        login_password: '{{ mysql_pass }}'
+        login_user: '{{ mysql_user }}'
+        login_port: 3306
+        query:
+        - CREATE DATABASE {{ user }}
+        - CREATE USER '{{ user }}'
+        - ALTER USER  '{{ user }}' IDENTIFIED BY '{{ user_pass }}'
+        - GRANT Usage ON *.* TO '{{ user }}'
+        - GRANT Alter ON {{ user }}.* TO '{{ user }}'
+        - GRANT Create ON {{ user }}.* TO '{{ user }}'
+        - GRANT Create view ON {{ user }}.* TO '{{ user }}'
+        - GRANT Delete ON {{ user }}.* TO '{{ user }}'
+        - GRANT Index ON {{ user }}.* TO '{{ user }}'
+        - GRANT Insert ON {{ user }}.* TO '{{ user }}'
+        - GRANT References ON {{ user }}.* TO '{{ user }}'
+        - GRANT Select ON {{ user }}.* TO '{{ user }}'
+        - GRANT Show view ON {{ user }}.* TO '{{ user }}'
+        - GRANT Trigger ON {{ user }}.* TO '{{ user }}'
+        - GRANT Update ON {{ user }}.* TO '{{ user }}'
+        - GRANT Alter routine ON {{ user }}.* TO '{{ user }}'
+        - GRANT Create routine ON {{ user }}.* TO '{{ user }}'
+        - GRANT Create temporary tables ON {{ user }}.* TO '{{ user }}'
+        - GRANT Execute ON {{ user }}.* TO '{{ user }}'
+        - GRANT Lock tables ON {{ user }}.* TO '{{ user }}'

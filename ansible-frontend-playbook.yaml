@@ -1,0 +1,97 @@
+---
+# THIS PLAYBOOK WAS WRITTEN TO HELP CONTINUOUS DEPLOYMENT PROCESS OF DEVOPS SERVICES' TO STAGE ENVIRONMENT
+# Can be run with the following command:
+# ansible-playbook ansible-playbook.yaml --extra-vars "user=APP_NAME port=PORT_NUMBER"
+
+# 'Stg Ops' consists of the tasks to run on Stage Server
+- name: Stg Ops
+  hosts: stage
+  remote_user: ec2-user
+  become: yes
+
+  tasks:
+    # 1st Step: We add the user with the same name as the service.
+    - name: Add User "{{ user }}"
+      ansible.builtin.user:
+        name: "{{ user }}"
+    # 2nd Step: We grant necessary permissions to user's home path
+    - name: Grant Permission
+      file:
+        path: "/home/{{ user }}/"
+        mode: '0750'
+    # 3rd Step: We add 'src' file under the user's home path
+    - name: Add File 'src'
+      file:
+        path: "/home/{{ user }}/src"
+        mode: '0777'
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        state: directory
+    # 4th Step: We add '.ssh' file under the user's home path
+    - name: Add Directory '.ssh'
+      file:
+        path: "/home/{{ user }}/.ssh"
+        mode: '0700'
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        state: directory
+    # 5th Step: We copy public_key under user's .ssh/ path
+    - name: Copy Public_key To Users' Home Path
+      copy:
+        src: ~/.ssh/id_rsa.pub
+        dest: "/home/{{ user }}/.ssh/"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: '0600'
+    # 6th Step: We add a comment line to authorized_keys file
+    - name: Add Comment Line to File Authorized_keys
+      ansible.builtin.lineinfile:
+        path: /home/{{ user }}/.ssh/authorized_keys
+        line: '# {{ user  }}--->'
+        create: yes
+        state: present
+    # 7th Step: We add public_key to authorized_keys
+    - name: Add Public_key To Authorized Keys
+      shell: cat /home/{{ user }}/.ssh/id_rsa.pub >> /home/{{ user }}/.ssh/authorized_keys
+    # 8th Step: We change ownership of the authorized_key file from root to user
+    - name: Change Ownership of the File 'authorized_keys'
+      file:
+        path: "/home/{{ user }}/.ssh/authorized_keys"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0600"
+    # 9th Step: We copy nginx.conf template file to under conf.d with the following name
+    - name: Copy Nginx Conf
+      copy:
+        src: "nginx/nginx-frontend.conf"
+        dest: "/etc/nginx/conf.d/{{ user }}.conf"
+        mode: '0644'
+    # 10.th Step: We edit nginx.conf template with the given parameter APP_NAME
+    #- name: Edit Nginx File
+    #  shell: sed -i 's/APP/{{ user }}/g' /etc/nginx/conf.d/{{ user }}.conf && sed -i 's/PORT/{{ port }}/g' /etc/nginx/conf.d/{{ user }}.conf
+    - name: Edit Nginx File 1.st
+      replace: 
+        path: "/etc/nginx/conf.d/{{ user }}.conf"
+        regexp: 'APP'
+        replace: '{{ user }}'
+        backup: no
+    # 11.th Step: We reload Nginx
+    - name: Reload Nginx
+      shell: systemctl reload nginx
+      become: yes
+    # 12.th Step: We take a backup of sudoers file
+    - name: Take a backup of 'sudoers' File
+      copy:
+        src: /etc/sudoers
+        remote_src: true
+        dest: /tmp/sudoers-backup
+    # 13.th Step: We edit Sudoers for app user
+    - name: Edit File 'sudoers'
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        line: '{{ user }} ALL=(root) NOPASSWD: /usr/local/bin/docker-compose --project-directory /home/{{ user }}/src -p {{ user }} *'
+        create: yes
+    # 14th Step: We edit /etc/group file
+    - name: Organizing /etc/group file
+      shell: now=$(date -v -1d '+%Y%m%d') && cp /etc/group /tmp/group-backup-$now && group_id=$(grep -i {{ user }} /etc/passwd | awk 'BEGIN{FS=":"} {print $3}') && echo "{{ user }}:x:$group_id:nginx" >> /etc/group
+

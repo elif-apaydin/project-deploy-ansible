@@ -93,5 +93,4 @@
         create: yes
     # 14th Step: We edit /etc/group file
     - name: Organizing /etc/group file
-      shell: now=$(date -v -1d '+%Y%m%d') && cp /etc/group /tmp/group-backup-$now && group_id=$(grep -i {{ user }} /etc/passwd | awk 'BEGIN{FS=":"} {print $3}') && echo "{{ user }}:x:$group_id:nginx" >> /etc/group
-
+      shell: now=$(date '+%Y%m%d') && cp /etc/group /tmp/group-backup-$now && group_id=$(grep -i {{ user }} /etc/passwd | awk 'BEGIN{FS=":"} {print $3}') && echo "{{ user }}:x:$group_id:nginx" >> /etc/group

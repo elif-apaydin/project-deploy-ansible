@@ -12,24 +12,25 @@ pipelines:
             - pip install PyMySQL
             - pip install ansible
             - ansible-galaxy collection install community.mysql
-            - echo $B64_STG | base64 --decode > /tmp/stage.pem
-            - chmod 0400 /tmp/stage.pem
+            - echo $B64_STG | base64 --decode > $BITBUCKET_CLONE_DIR/stage.pem
+            - echo "ec2 ansible_host=$IP ansible_ssh_private_key_file=${BITBUCKET_CLONE_DIR}/stage.pem" >> hosts
+            - chmod 0400 $BITBUCKET_CLONE_DIR/stage.pem
+#            - echo $BITBUCKET_CLONE_DIR; ls -ltrh
             - echo $B64_APP | base64 --decode > ~/.ssh/id_rsa.pub
-            - echo "$IP ec2" >> /etc/hosts
+#            - cat hosts
             - cat /dev/urandom | tr -dc '[:alnum:]' | head -c 20 > mysql-pass
             - DB_USER_PASS=$(awk 'NR=1' mysql-pass)
             - ansible-playbook -i hosts ansible-stage-backend-playbook.yaml --extra-vars "user=$APP_NAME port=$PORT mysql_user=$STAGE_MYSQL_USER mysql_pass=$STAGE_MYSQL_PASS mysql_host=$STAGE_MYSQL_HOST user_pass=$DB_USER_PASS"
-            - rm -rf /tmp/stage.pem ~/.ssh/id_rsa.pub
+            - rm -rf $BITBUCKET_CLONE_DIR/stage.pem ~/.ssh/id_rsa.pub
     frontend_deploy:
       - step:
           name: Stage Ops
-          caches:
-            - pip
           script:
             - pip install ansible
-            - echo $B64_STG | base64 --decode > /tmp/stage.pem
-            - chmod 0400 /tmp/stage.pem
+            - echo $B64_STG | base64 --decode > $BITBUCKET_CLONE_DIR/stage.pem
+            - chmod 0400 $BITBUCKET_CLONE_DIR/stage.pem
+            - echo "ec2 ansible_host=$IP ansible_ssh_private_key_file=${BITBUCKET_CLONE_DIR}/stage.pem" >> hosts
             - echo $B64_APP | base64 --decode > ~/.ssh/id_rsa.pub
-            - echo "$IP ec2" >> /etc/hosts
+            - cat hosts
             - ansible-playbook -i hosts ansible-stage-frontend-playbook.yaml --extra-vars "user=$APP_NAME"
-            - rm -rf /tmp/stage.pem ~/.ssh/id_rsa.pubplaybooku
+            - rm -rf $BITBUCKET_CLONE_DIR/stage.pem ~/.ssh/id_rsa.pub

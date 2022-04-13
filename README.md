@@ -2,7 +2,7 @@
 
 This Playbook proceeds tasks which are needed to be done before containerized services deployments to Stage server. Briefly it is responsible for preparing the environment.
 
-![](src/ansible.png)
+![](src/ansible.svg)
 
 ### Parts of this repository ###
 
